@@ -40,7 +40,7 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
-  const file = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+  let file = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
   if (interaction.isButton()) {
     if (interaction.customId === 'create_ticket') {
@@ -73,7 +73,14 @@ client.on('interactionCreate', async (interaction) => {
                 new MessageButton().setCustomId('ticket_take').setLabel('Join Ticket').setStyle('PRIMARY'),
                 new MessageButton().setCustomId('ticket_finish').setLabel('Finish Ticket').setStyle('SUCCESS')
               );
-              channel ? channel.send({ embeds: [embed], components: [row] }) : null;
+              // store message ID of the log in the config
+              if (channel) {
+                channel.send({ embeds: [embed], components: [row] }).then(msg => {
+                  file[interaction.guildId].ticketLogs
+[ticket.id] = msg.id;
+fs.writeFileSync('config.json', JSON.stringify(file));
+                });
+              }
             }
           });
       } else {
@@ -120,6 +127,17 @@ client.on('interactionCreate', async (interaction) => {
         channel.setLocked(true); // ONLY MEMBERS WITH MANAGE_THREADS CAN UNARCHIVE now
         channel.setArchived(true); // ARCHIVE THE THREAD
 
+        // delete log message
+        if (file[interaction.guildId] && file[interaction.guildId].ticketLogs[channel.id]) {
+          const logsChannel = interaction.client.channels.cache.get(file[interaction.guildId].channel);
+          if (logsChannel) {
+            const logMessageId = file[interaction.guildId].ticketLogs[channel.id];
+            logsChannel.messages.fetch(logMessageId).then(msg => msg.delete());
+            delete file[interaction.guildId].ticketLogs[channel.id]; // delete log entry from config
+            fs.writeFileSync('config.json', JSON.stringify(file));
+          }
+        }
+
         interaction.reply({ content: `Archived the ticket.`, ephemeral: true });
       } else {
         interaction.reply({ content: `Ticket not found. maybe it was archived or deleted?`, ephemeral: true });
@@ -148,7 +166,7 @@ client.on('interactionCreate', async (interaction) => {
 
       try {
         const channel = interaction.options.getChannel('channel');
-        file[interaction.guildId] = { channel: channel.id };
+        file[interaction.guildId] = { channel: channel.id, ticketLogs: {} };
 
         fs.writeFile('config.json', JSON.stringify(file), (err) => {
           if (err) console.error(err);
