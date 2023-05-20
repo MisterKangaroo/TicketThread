@@ -14,7 +14,18 @@ client.on('ready', async () => {
   const commands = await client.application.commands.fetch();
   if (!commands.find((c) => c.name === 'ticket')) {
     client.application?.commands
-      .create({ name: 'ticket', description: 'Send a button to open a ticket.' })
+      .create({
+        name: 'ticket',
+        description: 'Send a button to open a ticket.',
+        options: [
+          {
+            type: 'STRING',
+            name: 'purpose',
+            description: 'The intended purpose of the tickets.',
+            required: true,
+          },
+        ],
+      })
       .then((c) => console.log('Created command "' + c.name + '"'))
       .catch((err) => console.log(err));
   }
@@ -43,7 +54,8 @@ client.on('interactionCreate', async (interaction) => {
   let file = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
   if (interaction.isButton()) {
-    if (interaction.customId === 'create_ticket') {
+    if (interaction.customId.startsWith('create_ticket_')) {
+      const purpose = interaction.customId.split('_')[2]; {
       if (interaction.guild.premiumTier === 'NONE' || interaction.guild.premiumTier === 'TIER_1') {
         return interaction.reply({ content: 'You need at least server boost **level 2** to use this feature.', ephemeral: true });
       }
@@ -68,7 +80,7 @@ client.on('interactionCreate', async (interaction) => {
 
             if (file[interaction.guildId]) {
               const channel = interaction.client.channels.cache.get(file[interaction.guildId].channel);
-              const embed = new MessageEmbed().setColor('#303037').setDescription(`${interaction.member} has created a ticket <#${ticket.id}>`);
+              const embed = new MessageEmbed().setColor('#303037').setDescription(`**${purpose.toUpperCase()}** | ${interaction.member} has created a ${purpose} ticket <#${ticket.id}>`);
               const row = new MessageActionRow().addComponents(
                 new MessageButton().setCustomId('ticket_take').setLabel('Join Ticket').setStyle('PRIMARY'),
                 new MessageButton().setCustomId('ticket_finish').setLabel('Finish Ticket').setStyle('SUCCESS')
@@ -145,15 +157,13 @@ fs.writeFileSync('config.json', JSON.stringify(file));
     }
   }
 
-  if (interaction.isCommand()) {
+  else if (interaction.isCommand()) {
     if (interaction.commandName === 'ticket') {
-      if (!interaction.member.permissions.has('ADMINISTRATOR')) {
-        return interaction.reply({ content: 'You need to have the admin permission to use this.', ephemeral: true });
-      }
+      const purpose = interaction.options.getString('purpose');
 
-      const embed = new MessageEmbed().setColor('#303037').setDescription('To open a ticket click the button below');
+      const embed = new MessageEmbed().setColor('#303037').setDescription(`To open a ${purpose} ticket, click the button below`);
       const row = new MessageActionRow().addComponents(
-        new MessageButton().setCustomId('create_ticket').setLabel('📩').setStyle('SECONDARY')
+        new MessageButton().setCustomId(`create_ticket_${purpose}`).setLabel('📩').setStyle('SECONDARY')
       );
 
       interaction.channel.send({ embeds: [embed], components: [row] });
