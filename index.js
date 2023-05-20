@@ -68,7 +68,7 @@ client.on('interactionCreate', async (interaction) => {
 
             if (file[interaction.guildId]) {
               const channel = interaction.client.channels.cache.get(file[interaction.guildId].channel);
-              const embed = new MessageEmbed().setColor('#303037').setDescription(`${interaction.member} has created a ticket <#${ticket.id}>`);
+              const embed = new MessageEmbed().setColor('#303037').setDescription(`${interaction.channel.name} | ${interaction.member} has created a ticket <#${ticket.id}> in ${interaction.channel}`);
               const row = new MessageActionRow().addComponents(
                 new MessageButton().setCustomId('ticket_take').setLabel('Join Ticket').setStyle('PRIMARY'),
                 new MessageButton().setCustomId('ticket_finish').setLabel('Finish Ticket').setStyle('SUCCESS')
